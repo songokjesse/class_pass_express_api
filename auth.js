@@ -43,7 +43,7 @@ const register = async (req, res) => {
             name,
         }).returning();
 
-        const user = { id: result[0].id, email: result[0].email };
+        const user = { id: result[0].id, email: result[0].email, name: result[0].name };
         const token = generateToken(user);
         res.status(201).json({ token });
     } catch (e) {
