@@ -1,14 +1,15 @@
 const jwt = require('jsonwebtoken');
 const argon2 = require('argon2');
-const {db} = require("./db");
-const {users} = require("./schema");
-const {sql} = require("drizzle-orm");
+const { eq } = require("drizzle-orm");
+const config = require('./config');
+const db = require('./db/db');
+const { users } = require('./db/schema');
 
 const generateToken = (user) => {
-    return jwt.sign({id: user.id, email: user.email}, process.env.JWT_SECRET, {
+    return jwt.sign({ id: user.id, email: user.email }, config.JWT_SECRET, {
         expiresIn: '1w',
-    })
-}
+    });
+};
 
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -16,47 +17,61 @@ const authenticateToken = (req, res, next) => {
 
     if (token == null) return res.status(401).send('No token provided.');
 
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (err) return res.status(403);
+    jwt.verify(token, config.JWT_SECRET, (err, user) => {
+        if (err) return res.status(403).send('Invalid token.');
         req.user = user;
         next();
     });
-}
+};
 
 const register = async (req, res) => {
     try {
         const { name, email, password } = req.body;
-        // TODO validate
-        const userExists = await db.select(users).where(sql`${users.id} = ${email}`);
-        if (!userExists) return res.status(400).send('User already exists');
-        const hashedPassword = argon2.hash(password)
-        //insert into db
+
+        if (!name || !email || !password) {
+            return res.status(400).json({ error: 'Name, email, and password are required.' });
+        }
+
+        const existingUser = await db.select().from(users).where(eq(users.email, email)).limit(1);
+        if (existingUser.length > 0) return res.status(400).json({ error: 'User already exists' });
+
+        const hashedPassword = await argon2.hash(password);
+
         const result = await db.insert(users).values({
-            email: email,
+            email,
             password: hashedPassword,
-            name: name,
-        }).returning()
-        const user = {id: result.id, email: result.email}
+            name,
+        }).returning();
+
+        const user = { id: result[0].id, email: result[0].email };
         const token = generateToken(user);
-        res.status(201).json({token});
+        res.status(201).json({ token });
     } catch (e) {
-        res.status(500).json({error: e.message});
+        console.error('Registration error:', e);
+        res.status(500).json({ error: 'An error occurred during registration.' });
     }
-}
+};
+
 const login = async (req, res) => {
     try {
-        const {email,password} = req.body;
-        const user = await db.select(users).where(sql`${users.id} = ${email}`);
-        if (user && await argon2.verify(password, user.password)) {
-            const token = generateToken(user);
-            res.status(200).json({token});
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email and password are required.' });
+        }
+
+        const user = await db.select().from(users).where(eq(users.email, email)).limit(1);
+
+        if (user.length > 0 && await argon2.verify(user[0].password, password)) {
+            const token = generateToken(user[0]);
+            res.status(200).json({ token });
         } else {
-            res.status(401).json({error: 'Invalid Credentials.'});
+            res.status(401).json({ error: 'Invalid credentials.' });
         }
     } catch (e) {
-        res.status(500).json({error: e.message});
+        console.error('Login error:', e);
+        res.status(500).json({ error: 'An error occurred during login.' });
     }
-}
+};
 
-
-module.exports = {authenticateToken,register,login}
+module.exports = { authenticateToken, register, login };

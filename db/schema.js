@@ -1,5 +1,5 @@
-import {sqliteTable, integer, text} from "drizzle-orm/sqlite-core";
-import {sql} from "drizzle-orm";
+const {sqliteTable, integer, text} = require("drizzle-orm/sqlite-core");
+const {sql} = require("drizzle-orm");
 
 const users = sqliteTable('users', {
     id: integer('id').primaryKey(),
