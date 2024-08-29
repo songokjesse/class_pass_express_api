@@ -15,6 +15,13 @@
       "when": 1724920814575,
       "tag": "0001_gifted_gateway",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1724953875780,
+      "tag": "0002_long_carnage",
+      "breakpoints": true
     }
   ]
 }

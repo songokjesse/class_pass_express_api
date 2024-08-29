@@ -1,20 +1,13 @@
 const express = require("express");
 const { authenticateToken, register, login } = require("./auth");
+const db = require('./db/db');
 const { users } = require("./db/schema");
-const { drizzle } = require("drizzle-orm/libsql");
-const { createClient } = require("@libsql/client");
 require("dotenv").config();
 
-const turso = createClient({
-  url: process.env.TURSO_DATABASE_URL,
-  authToken: process.env.TURSO_AUTH_TOKEN,
-});
-
-const db = drizzle(turso);
 const router = express.Router();
 
-router.post("/register", register);
-router.post("/login", login);
+router.post('/register', register);
+router.post('/login',login);
 
 // User route
 router.get("/user", authenticateToken, (req, res) => {
@@ -39,6 +32,26 @@ router.get("/users", authenticateToken, async (req, res) => {
   } catch (e) {
     console.error("Error fetching users:", e);
     res.status(500).json({ error: "An error occurred while fetching users." });
+  }
+});
+
+// Logout route
+router.post('/logout', authenticateToken, async (req, res) => {
+  try {
+    // // Update the user's record with a lastLogout timestamp
+    // await db.update(users)
+    //     .set({ lastLogout: new Date() })
+    //     .where(eq(users.id, req.user.id));
+
+    // In a real-world scenario, you might want to blacklist the token here
+    // This would require maintaining a blacklist of tokens in your database or a cache like Redis
+    // await blacklistToken(req.user.token);
+
+    // Return no content
+    res.status(204).send();
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ error: 'An error occurred during logout.' });
   }
 });
 
